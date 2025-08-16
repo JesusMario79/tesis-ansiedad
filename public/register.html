@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Registro – Aplicación ML – Ansiedad (SCAS)</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    html, body { height:100%; margin:0; }
+    .auth-center {
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px 16px;
+      background-color:#f8fafc;
+    }
+    .auth-card {
+      width:100%;
+      max-width:720px;
+      padding:18px 20px 20px;
+      background:#fff;
+      border-radius:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,.07);
+    }
+    .brand {
+      margin:0 0 6px;
+      font-size:24px;
+      font-weight:800;
+      color:#0f172a;
+      text-align:center;
+    }
+    .auth-title {
+      margin:0 0 12px;
+      font-size:18px;
+      font-weight:800;
+      color:#0f172a;
+      text-align:center;
+    }
+    .stack { display:flex; flex-direction:column; gap:10px; margin-bottom:10px; }
+    .field { display:flex; flex-direction:column; gap:6px; }
+    .field label { font-weight:600; color:#334155; font-size:14px; }
+    .inp-lg { height:48px; font-size:16px; border-radius:12px; padding:0 12px; }
+    .btn-lg { height:48px; border-radius:12px; font-size:16px; }
+    .btn-primary { background-color:#f97316; border:none; color:#fff; font-weight:600; cursor:pointer; }
+    .btn-primary:hover { background-color:#ea580c; }
+    .full { width:100%; }
+    .msg-inline { margin-top:8px; color:#c02626; min-height:20px; font-weight:600; text-align:center; }
+    .auth-footer { margin-top:12px; color:#64748b; font-size:14px; text-align:center; }
+    .link { color:#2563eb; text-decoration:none; font-weight:600; }
+    .link:hover { text-decoration:underline; }
+  </style>
+</head>
+<body>
+  <div class="auth-center">
+    <div class="auth-card" id="register">
+      <h2 class="brand">Aplicación ML – Ansiedad (SCAS)</h2>
+      <p class="auth-title">Registro del estudiante</p>
+
+      <!-- rol fijo a estudiante (opcional si no lo usas en JS) -->
+      <input type="hidden" id="regRole" value="student">
+
+      <div class="stack">
+        <!-- Nombre -->
+        <div class="field">
+          <label for="regFullname">Nombre completo</label>
+          <input id="regFullname" name="fullname" type="text"
+                 class="inp-lg full"
+                 pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+"
+                 title="Usa solo letras y espacios"
+                 autocomplete="name"
+                 required>
+        </div>
+
+        <!-- Correo -->
+        <div class="field">
+          <label for="regEmail">Correo electrónico</label>
+          <input id="regEmail" name="email" type="email"
+                 class="inp-lg full"
+                 pattern="^[A-Za-z][A-Za-z0-9._%+-]*@(gmail\.com|hotmail\.com)$"
+                 title="Debe iniciar con una letra y terminar en @gmail.com o @hotmail.com"
+                 autocomplete="email"
+                 required>
+        </div>
+
+        <!-- Género -->
+        <div class="field">
+          <label for="regGender">Género</label>
+          <select id="regGender" class="inp-lg full" autocomplete="sex" required>
+            <option value="">Selecciona Género</option>
+            <option value="M">Masculino</option>
+            <option value="F">Femenino</option>
+          </select>
+        </div>
+
+        <!-- Edad -->
+        <div class="field">
+          <label for="regAge">Edad</label>
+          <input id="regAge" name="age" type="number"
+                 class="inp-lg full"
+                 min="12" max="15" step="1" inputmode="numeric"
+                 oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value>15)this.value=15; if(this.value && this.value<12)this.value=12;"
+                 title="Solo valores entre 12 y 15"
+                 autocomplete="bday"
+                 required>
+        </div>
+
+        <!-- Contraseña -->
+        <div class="field">
+          <label for="regPass">Contraseña</label>
+          <input id="regPass" name="password" type="password"
+                 class="inp-lg full"
+                 minlength="6" maxlength="10"
+                 autocomplete="new-password"
+                 required>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-lg full" onclick="register()">Crear cuenta</button>
+      <div id="regMsg" class="msg-inline" aria-live="polite"></div>
+
+      <p class="auth-footer">
+        ¿Ya tienes cuenta?
+        <a class="link" href="index.html">Inicia sesión</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

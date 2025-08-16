@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Panel del Administrador</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    :root{
+      --bg:#f6f9fc; --card:#fff; --text:#0f172a; --muted:#64748b; --border:#e5e7eb;
+      --brand:#4f46e5; --primary:#2563eb; --primary-h:#1d4ed8; --danger:#dc2626;
+    }
+    html,body{background:var(--bg)}
+    .wrap{max-width:1100px;margin:22px auto 40px;padding:0 14px}
+
+    .topbar{
+      display:flex;gap:10px;align-items:center;justify-content:space-between;
+      margin-bottom:10px;
+    }
+    .title{
+      font-weight:900;color:var(--text);font-size:clamp(22px,3.2vw,32px);
+      letter-spacing:.3px;
+    }
+    .chip{
+      background:#ede9fe;color:#4338ca;border-radius:999px;padding:8px 12px;
+      font-weight:800;font-size:14px;
+    }
+    .btn{border:none;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
+    .btn-ghost{background:#fff;border:1px solid var(--border);color:#111827}
+    .btn-ghost:hover{background:#f9fafb}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:var(--primary-h)}
+
+    .grid{
+      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:12px 0 16px;
+    }
+    .card{
+      background:var(--card);border:1px solid var(--border);border-radius:14px;
+      padding:14px 16px;box-shadow:0 8px 24px rgba(0,0,0,.05);
+    }
+    .metric-title{color:#64748b;font-weight:700;margin-bottom:6px}
+    .metric-value{font-size:30px;font-weight:900;color:var(--text)}
+
+    .actions{
+      display:flex;gap:10px;align-items:center;margin:8px 0 12px
+    }
+    .search{flex:1}
+    .search input{
+      width:100%;height:42px;border:1px solid var(--border);border-radius:12px;padding:0 12px;
+      font-size:15px;outline:none;background:#fff;
+    }
+
+    table{
+      width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);
+      border-radius:12px;overflow:hidden;background:#fff;
+    }
+    thead th{
+      background:#f8fafc;color:#111827;font-weight:800;padding:12px 14px;text-align:left;
+      border-bottom:1px solid var(--border);
+    }
+    tbody td{padding:12px 14px;border-bottom:1px solid var(--border)}
+    tbody tr:last-child td{border-bottom:none}
+    .badge{
+      display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;
+      font-weight:800;font-size:12px;letter-spacing:.3px;
+    }
+    .lv-low{ color:#065f46;background:#d1fae5 }
+    .lv-mid{ color:#78350f;background:#ffedd5 }
+    .lv-high{ color:#7f1d1d;background:#fee2e2 }
+
+    .msg{margin-top:10px;color:var(--danger);font-weight:800}
+    @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">Panel del Administrador</div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span id="welcome" class="chip">Bienvenido/a</span>
+        <button class="btn btn-ghost" id="btnLogout">Cerrar sesión</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="metric-title">Estudiantes</div>
+        <div class="metric-value" id="cardStudents">0</div>
+      </div>
+      <div class="card">
+        <div class="metric-title">Intentos totales</div>
+        <div class="metric-value" id="cardAttempts">0</div>
+      </div>
+      <div class="card">
+        <div class="metric-title">Puntaje promedio (último)</div>
+        <div class="metric-value" id="cardAvg">0</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <div class="search">
+        <input id="q" type="search" placeholder="Buscar por nombre o correo"/>
+      </div>
+      <button class="btn btn-ghost" id="btnSortDate">Ordenar por fecha</button>
+      <button class="btn btn-ghost" id="btnSortScore">Ordenar por puntaje</button>
+      <button class="btn btn-primary" id="btnExport">Exportar CSV</button>
+    </div>
+
+    <div class="card" style="padding:0">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Correo</th>
+            <th>Intentos</th>
+            <th>Último puntaje</th>
+            <th>Resultado</th>
+            <th>Fecha última</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="adminMsg" class="msg"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // exige rol admin
+    ensureAuthOrRedirect('admin');
+
+    // UI básico
+    const name = localStorage.getItem('fullname') || 'Administrador';
+    document.getElementById('welcome').textContent = 'Bienvenido/a: ' + name;
+    document.getElementById('btnLogout').addEventListener('click', logout);
+
+    const tbody = document.getElementById('tbody');
+    const msg = document.getElementById('adminMsg');
+    const token = localStorage.getItem('token');
+
+    let rows = [];      // crudo del backend
+    let view = [];      // vista actual (filtrada/ordenada)
+
+    const fmtDate = (s) => {
+      if (!s) return '';
+      // s viene como 'YYYY-MM-DD HH:MM:SS' (SQLite). Crear fecha local segura:
+      try {
+        // Reemplazo ' ' por 'T' y fuerzo 'Z' para evitar offset raro
+        const d = new Date(s.replace(' ', 'T') + 'Z');
+        // Si d es inválido, devolvemos s tal cual
+        if (isNaN(d.getTime())) return s;
+        return d.toLocaleString();
+      } catch { return s; }
+    };
+
+    const paint = () => {
+      tbody.innerHTML = '';
+      if (!view.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 6;
+        td.style.color = '#64748b';
+        td.style.fontWeight = '700';
+        td.textContent = 'Sin resultados';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      for (const r of view) {
+        const tr = document.createElement('tr');
+
+        const tdName = document.createElement('td'); tdName.textContent = r.fullname || '';
+        const tdMail = document.createElement('td'); tdMail.textContent = r.email || '';
+        const tdAtt  = document.createElement('td'); tdAtt.textContent  = r.attempts ?? 0;
+        const tdSc   = document.createElement('td'); tdSc.textContent   = r.last_score ?? '';
+        const tdLev  = document.createElement('td');
+        const badge = document.createElement('span');
+        const lvl = (r.last_level || '').toString();
+        badge.textContent = lvl || '—';
+        badge.className = 'badge ' + (
+          /alto/i.test(lvl) ? 'lv-high' : /moderado/i.test(lvl) ? 'lv-mid' : 'lv-low'
+        );
+        tdLev.appendChild(badge);
+
+        const tdDt  = document.createElement('td'); tdDt.textContent = fmtDate(r.last_date);
+
+        tr.appendChild(tdName);
+        tr.appendChild(tdMail);
+        tr.appendChild(tdAtt);
+        tr.appendChild(tdSc);
+        tr.appendChild(tdLev);
+        tr.appendChild(tdDt);
+        tbody.appendChild(tr);
+      }
+    };
+
+    const applyFilter = () => {
+      const q = (document.getElementById('q').value || '').trim().toLowerCase();
+      if (!q) { view = [...rows]; paint(); return; }
+      view = rows.filter(r =>
+        (r.fullname || '').toLowerCase().includes(q) ||
+        (r.email || '').toLowerCase().includes(q)
+      );
+      paint();
+    };
+
+    const sortByDate = () => {
+      view.sort((a,b) => {
+        const da = a.last_date ? Date.parse(a.last_date.replace(' ','T') + 'Z') : 0;
+        const db = b.last_date ? Date.parse(b.last_date.replace(' ','T') + 'Z') : 0;
+        return db - da;
+      });
+      paint();
+    };
+
+    const sortByScore = () => {
+      view.sort((a,b) => (b.last_score ?? -1) - (a.last_score ?? -1));
+      paint();
+    };
+
+    const exportCSV = () => {
+      const head = ['Nombre','Correo','Intentos','Último puntaje','Resultado','Fecha última'];
+      const lines = [head.join(',')];
+      for (const r of view) {
+        const row = [
+          (r.fullname || '').replace(/,/g,' '),
+          (r.email || '').replace(/,/g,' '),
+          r.attempts ?? 0,
+          r.last_score ?? '',
+          (r.last_level || '').replace(/,/g,' '),
+          fmtDate(r.last_date).replace(/,/g,' ')
+        ];
+        lines.push(row.join(','));
+      }
+      const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'scas_admin_export.csv';
+      document.body.appendChild(a); a.click();
+      a.remove(); URL.revokeObjectURL(url);
+    };
+
+    document.getElementById('q').addEventListener('input', applyFilter);
+    document.getElementById('btnSortDate').addEventListener('click', sortByDate);
+    document.getElementById('btnSortScore').addEventListener('click', sortByScore);
+    document.getElementById('btnExport').addEventListener('click', exportCSV);
+
+    // Cargar datos
+    (async () => {
+      try {
+        msg.textContent = '';
+        const res = await fetch('/api/admin/students', {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          msg.textContent = data.error || ('HTTP ' + res.status);
+          rows = []; view = []; paint();
+          return;
+        }
+        // métricas
+        document.getElementById('cardStudents').textContent = data.stats?.students ?? 0;
+        document.getElementById('cardAttempts').textContent = data.stats?.attempts ?? 0;
+        document.getElementById('cardAvg').textContent = data.stats?.avg_last ?? 0;
+
+        rows = data.students || [];
+        view = [...rows];
+        // por defecto, orden por fecha desc
+        sortByDate();
+      } catch (e) {
+        console.error(e);
+        msg.textContent = 'No se pudo cargar. Verifica el servidor.';
+        rows = []; view = []; paint();
+      }
+    })();
+  </script>
+</body>
+</html>

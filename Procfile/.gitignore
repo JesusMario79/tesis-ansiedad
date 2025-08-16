@@ -1,0 +1,16 @@
+@"
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.vscode/
+.idea/
+.DS_Store
+.env
+*.sqlite
+instance/
+.ipynb_checkpoints/
+*.joblib
+*.pkl
+"@ | Set-Content .gitignore
