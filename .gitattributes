@@ -1,0 +1,14 @@
+# Normalizar archivos de texto
+* text=auto
+
+# Forzar LF para código y docs
+*.py   text eol=lf
+*.sh   text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# Mantener CRLF para scripts de Windows
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
