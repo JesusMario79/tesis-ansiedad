@@ -127,28 +127,33 @@
 
   <script src="app.js"></script>
   <script>
-    // exige rol admin
-    ensureAuthOrRedirect('admin');
+  (async function () {
+    // Cerrar sesión
+    const btnLogout = document.getElementById('btnLogout');
+    if (btnLogout) btnLogout.addEventListener('click', (e)=>{ e.preventDefault(); logout(); });
 
-    // UI básico
-    const name = localStorage.getItem('fullname') || 'Administrador';
-    document.getElementById('welcome').textContent = 'Bienvenido/a: ' + name;
-    document.getElementById('btnLogout').addEventListener('click', logout);
+    // Exigir rol admin
+    await requireAuthPage('admin');
+
+    // Saludo
+    const meLocal = getUser();
+    if (meLocal?.fullname) {
+      document.getElementById('welcome').textContent = 'Bienvenido/a: ' + meLocal.fullname;
+    } else {
+      const me = await loadMe();
+      document.getElementById('welcome').textContent = 'Bienvenido/a: ' + (me?.fullname || 'Administrador');
+    }
 
     const tbody = document.getElementById('tbody');
-    const msg = document.getElementById('adminMsg');
-    const token = localStorage.getItem('token');
+    const msg   = document.getElementById('adminMsg');
 
-    let rows = [];      // crudo del backend
-    let view = [];      // vista actual (filtrada/ordenada)
+    let rows = []; // crudo del backend
+    let view = []; // vista filtrada/ordenada
 
     const fmtDate = (s) => {
       if (!s) return '';
-      // s viene como 'YYYY-MM-DD HH:MM:SS' (SQLite). Crear fecha local segura:
       try {
-        // Reemplazo ' ' por 'T' y fuerzo 'Z' para evitar offset raro
-        const d = new Date(s.replace(' ', 'T') + 'Z');
-        // Si d es inválido, devolvemos s tal cual
+        const d = new Date(s.replace(' ', 'T')); // MySQL DATETIME -> local
         if (isNaN(d.getTime())) return s;
         return d.toLocaleString();
       } catch { return s; }
@@ -171,19 +176,19 @@
         const tr = document.createElement('tr');
 
         const tdName = document.createElement('td'); tdName.textContent = r.fullname || '';
-        const tdMail = document.createElement('td'); tdMail.textContent = r.email || '';
-        const tdAtt  = document.createElement('td'); tdAtt.textContent  = r.attempts ?? 0;
-        const tdSc   = document.createElement('td'); tdSc.textContent   = r.last_score ?? '';
+        const tdMail = document.createElement('td'); tdMail.textContent  = r.email || '';
+        const tdAtt  = document.createElement('td'); tdAtt.textContent   = r.attempts ?? 0;
+        const tdSc   = document.createElement('td'); tdSc.textContent    = r.last_score ?? '';
         const tdLev  = document.createElement('td');
-        const badge = document.createElement('span');
-        const lvl = (r.last_level || '').toString();
+        const badge  = document.createElement('span');
+        const lvl    = (r.last_level || '').toString();
         badge.textContent = lvl || '—';
         badge.className = 'badge ' + (
           /alto/i.test(lvl) ? 'lv-high' : /moderado/i.test(lvl) ? 'lv-mid' : 'lv-low'
         );
         tdLev.appendChild(badge);
 
-        const tdDt  = document.createElement('td'); tdDt.textContent = fmtDate(r.last_date);
+        const tdDt = document.createElement('td'); tdDt.textContent = fmtDate(r.last_date);
 
         tr.appendChild(tdName);
         tr.appendChild(tdMail);
@@ -207,8 +212,8 @@
 
     const sortByDate = () => {
       view.sort((a,b) => {
-        const da = a.last_date ? Date.parse(a.last_date.replace(' ','T') + 'Z') : 0;
-        const db = b.last_date ? Date.parse(b.last_date.replace(' ','T') + 'Z') : 0;
+        const da = a.last_date ? Date.parse(a.last_date.replace(' ','T')) : 0;
+        const db = b.last_date ? Date.parse(b.last_date.replace(' ','T')) : 0;
         return db - da;
       });
       paint();
@@ -246,34 +251,24 @@
     document.getElementById('btnSortScore').addEventListener('click', sortByScore);
     document.getElementById('btnExport').addEventListener('click', exportCSV);
 
-    // Cargar datos
-    (async () => {
-      try {
-        msg.textContent = '';
-        const res = await fetch('/api/admin/students', {
-          headers: { Authorization: 'Bearer ' + token }
-        });
-        const data = await res.json();
-        if (!res.ok || data.error) {
-          msg.textContent = data.error || ('HTTP ' + res.status);
-          rows = []; view = []; paint();
-          return;
-        }
-        // métricas
-        document.getElementById('cardStudents').textContent = data.stats?.students ?? 0;
-        document.getElementById('cardAttempts').textContent = data.stats?.attempts ?? 0;
-        document.getElementById('cardAvg').textContent = data.stats?.avg_last ?? 0;
+    // Cargar datos del backend
+    try {
+      msg.textContent = '';
+      const data = await api('/api/admin/students'); // auth=true por defecto
 
-        rows = data.students || [];
-        view = [...rows];
-        // por defecto, orden por fecha desc
-        sortByDate();
-      } catch (e) {
-        console.error(e);
-        msg.textContent = 'No se pudo cargar. Verifica el servidor.';
-        rows = []; view = []; paint();
-      }
-    })();
+      document.getElementById('cardStudents').textContent = data.stats?.students ?? 0;
+      document.getElementById('cardAttempts').textContent = data.stats?.attempts ?? 0;
+      document.getElementById('cardAvg').textContent      = data.stats?.avg_last ?? 0;
+
+      rows = data.students || [];
+      view = [...rows];
+      sortByDate(); // orden por fecha desc
+    } catch (e) {
+      console.error(e);
+      msg.textContent = e.message || 'No se pudo cargar. Verifica el servidor.';
+      rows = []; view = []; paint();
+    }
+  })();
   </script>
 </body>
 </html>

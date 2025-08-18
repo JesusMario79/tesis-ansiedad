@@ -147,196 +147,150 @@
       </div>
     </section>
   </div>
+<script src="app.js"></script>
+<script>
+  // --- Primero: referencias al DOM
+  const DOM = {
+    hello:    document.getElementById('hello'),
+    step:     document.getElementById('step'),
+    qtext:    document.getElementById('qtext'),
+    choices:  document.getElementById('choices'),
+    btnPrev:  document.getElementById('btnPrev'),
+    btnNext:  document.getElementById('btnNext'),
+    progText: document.getElementById('progText'),
+    progBar:  document.getElementById('progBar'),
+  };
 
-  <script src="app.js"></script>
-  <script>
-    // --- Requiere sesión
-    ensureAuthOrRedirect('student');
+  // --- Estado
+  const state = {
+    items: [],
+    index: 0,
+    answers: new Map(),
+    usedBack: false,
+    completedOnce: false
+  };
 
-    // Estado
-    const state = {
-      items: [],
-      index: 0,
-      answers: new Map(),          // item_id -> value 0..3
-      usedBack: false,             // si usó "Atrás" alguna vez
-      completedOnce: false         // si ya contestó todas
-    };
+  // --- Requiere sesión de estudiante y prepara saludo
+  document.addEventListener('DOMContentLoaded', async () => {
+    const me = await loadMe();
+    if (!me) { location.href = "index.html"; return; }
+    if (me.role !== "student") { location.replace("admin.html"); return; }
 
-    const DOM = {
-      hello:    document.getElementById('hello'),
-      step:     document.getElementById('step'),
-      qtext:    document.getElementById('qtext'),
-      choices:  document.getElementById('choices'),
-      btnPrev:  document.getElementById('btnPrev'),
-      btnNext:  document.getElementById('btnNext'),
-      progText: document.getElementById('progText'),
-      progBar:  document.getElementById('progBar'),
-    };
-
-    // Bienvenida
-    const nombre = localStorage.getItem('fullname') || 'estudiante';
+    const { fullname = 'estudiante' } = getUser();
     DOM.hello.textContent =
-      `Hola, ${nombre}. Te damos la bienvenida. ` +
+      `Hola, ${fullname}. ` +
       `Responde según cómo te has sentido últimamente. ` +
       `Selecciona una opción en cada pregunta.`;
 
-    // Cargar encuesta
     init();
+  });
 
-    async function init(){
-      try {
-        const res = await fetch('/api/survey/scas', {
-          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
-        });
-        const data = await res.json();
-        if(!res.ok) throw new Error(data.error || 'Error al cargar encuesta');
+  // Cargar encuesta (usa helper api() que ya mete el Bearer correcto)
+  async function init(){
+    try {
+      const data = await api('/api/survey/scas', { auth: true });
+      state.items = data.items || [];
+      render();
+    } catch (e) {
+      DOM.qtext.textContent = 'No se pudo cargar la encuesta.';
+      console.error(e);
+    }
+  }
 
-        state.items = data.items || [];
-        render();
-      } catch (e) {
-        DOM.qtext.textContent = 'No se pudo cargar la encuesta.';
-        console.error(e);
-      }
+  // RENDER
+  function render(){
+    const total = state.items.length;
+    if(!total){ DOM.qtext.textContent = 'No hay preguntas disponibles.'; return; }
+
+    state.index = Math.max(0, Math.min(state.index, total-1));
+    const item = state.items[state.index];
+
+    DOM.step.textContent = `${state.index + 1} →`;
+    DOM.qtext.textContent = item.prompt || `Pregunta ${state.index + 1}`;
+
+    DOM.choices.innerHTML = '';
+    const chosen = state.answers.has(item.id) ? state.answers.get(item.id) : null;
+
+    const OPTIONS = [
+      {tag:'A', label:'Nunca',   val:0},
+      {tag:'B', label:'A veces', val:1},
+      {tag:'C', label:'A menudo',val:2},
+      {tag:'D', label:'Siempre', val:3},
+    ];
+    for(const opt of OPTIONS){
+      const row = document.createElement('div');
+      row.className = 'choice' + (chosen===opt.val ? ' active' : '');
+      row.innerHTML = `
+        <span class="tag">${opt.tag}</span>
+        <span class="label">${opt.label}</span>
+        <span class="dot"></span>
+      `;
+      row.addEventListener('click', ()=> onChoose(item.id, opt.val));
+      DOM.choices.appendChild(row);
     }
 
-    // RENDER
-    function render(){
-      const total = state.items.length;
-      if(!total) return;
+    DOM.btnPrev.disabled = state.index === 0;
+    DOM.btnNext.disabled = !state.answers.has(item.id);
+    updateNextButton();
+    updateProgress();
+  }
 
-      // Índices de seguridad
-      state.index = Math.max(0, Math.min(state.index, total-1));
+  function updateNextButton(){
+    const finished = state.answers.size === state.items.length;
+    state.completedOnce = state.completedOnce || finished;
+    if(finished && !state.usedBack){
+      DOM.btnNext.textContent = 'Ver resultados';
+      DOM.btnNext.classList.add('alt');
+    } else {
+      DOM.btnNext.textContent = 'Siguiente';
+      DOM.btnNext.classList.remove('alt');
+    }
+  }
 
-      const item = state.items[state.index];
-      DOM.step.textContent = `${state.index + 1} →`;
-      DOM.qtext.textContent = item.prompt || `Pregunta ${state.index + 1}`;
+  function updateProgress(){
+    const answered = state.answers.size;
+    const total = state.items.length || 1;
+    DOM.progText.textContent = `Progreso: ${answered} / ${total} respondidas`;
+    const pct = Math.round((answered / total) * 100) || 0;
+    DOM.progBar.style.width = pct + '%';
+  }
 
-      // Pintar opciones
-      DOM.choices.innerHTML = '';
-      const chosen = state.answers.has(item.id) ? state.answers.get(item.id) : null;
-
-      const OPTIONS = [
-        {tag:'A', label:'Nunca',   val:0},
-        {tag:'B', label:'A veces', val:1},
-        {tag:'C', label:'A menudo',val:2},
-        {tag:'D', label:'Siempre', val:3},
-      ];
-      for(const opt of OPTIONS){
-        const row = document.createElement('div');
-        row.className = 'choice' + (chosen===opt.val ? ' active' : '');
-        row.innerHTML = `
-          <span class="tag">${opt.tag}</span>
-          <span class="label">${opt.label}</span>
-          <span class="dot"></span>
-        `;
-        row.addEventListener('click', ()=> onChoose(item.id, opt.val));
-        DOM.choices.appendChild(row);
-      }
-
-      // controles
-      DOM.btnPrev.disabled = state.index === 0;
-      // next habilitado solo si la actual tiene respuesta
-      DOM.btnNext.disabled = !state.answers.has(item.id);
-
-      // Texto/acción de Next
+  function onChoose(itemId, value){
+    state.answers.set(itemId, value);
+    DOM.btnNext.disabled = false;
+    if(state.index < state.items.length - 1){
+      state.index++;
+      render();
+    } else {
       updateNextButton();
-
-      updateProgress();
     }
+  }
 
-    function updateNextButton(){
-      // Si ya se respondieron todas:
-      const finished = state.answers.size === state.items.length;
-      state.completedOnce = state.completedOnce || finished;
+  DOM.btnPrev.addEventListener('click', ()=>{
+    state.usedBack = true;
+    if(state.index > 0){ state.index--; render(); }
+  });
 
-      if(finished && !state.usedBack){
-        DOM.btnNext.textContent = 'Ver resultados';
-        DOM.btnNext.classList.add('alt');
-      } else {
-        DOM.btnNext.textContent = 'Siguiente';
-        DOM.btnNext.classList.remove('alt');
-      }
+  DOM.btnNext.addEventListener('click', ()=>{
+    const atLast = state.index === state.items.length - 1;
+    const allDone = state.answers.size === state.items.length;
+    if(allDone){ submitAndGo(); }
+    else if(!atLast){ state.index++; render(); }
+  });
+
+  async function submitAndGo(){
+    try {
+      const payload = {
+        answers: Array.from(state.answers.entries()).map(([item_id, value])=>({item_id, value}))
+      };
+      const data = await api('/api/survey/scas/submit', { method:'POST', auth:true, body: payload });
+      sessionStorage.setItem('scasResult', JSON.stringify(data));
+      location.href = 'results.html';
+    } catch (e) {
+      alert('No se pudo enviar la encuesta. Intenta otra vez.');
+      console.error(e);
     }
-
-    function updateProgress(){
-      const answered = state.answers.size;
-      const total = state.items.length;
-      DOM.progText.textContent = `Progreso: ${answered} / ${total} respondidas`;
-
-      const pct = Math.round((answered / total) * 100) || 0;
-      DOM.progBar.style.width = pct + '%';
-    }
-
-    // AL ELEGIR OPCIÓN → guarda y auto-avanza
-    function onChoose(itemId, value){
-      const before = state.answers.has(itemId);
-      state.answers.set(itemId, value);
-
-      // habilitar next en la actual
-      DOM.btnNext.disabled = false;
-
-      // Auto-avanzo (si no es la última)
-      if(state.index < state.items.length - 1){
-        state.index++;
-        render();
-      } else {
-        // última: actualizar botón a "Ver resultados" si no usó back
-        updateNextButton();
-      }
-    }
-
-    // NAV
-    DOM.btnPrev.addEventListener('click', ()=>{
-      state.usedBack = true;
-      if(state.index > 0){
-        state.index--;
-        render();
-      }
-    });
-
-    DOM.btnNext.addEventListener('click', ()=>{
-      const atLast = state.index === state.items.length - 1;
-      const allDone = state.answers.size === state.items.length;
-
-      if(allDone && !state.usedBack){
-        // Directo a resultados
-        submitAndGo();
-      } else if(atLast && allDone){
-        // Si usó "Atrás", avanza paso-a-paso y aquí sí va a resultados
-        submitAndGo();
-      } else {
-        // Avanza 1
-        if(state.index < state.items.length - 1){
-          state.index++;
-          render();
-        }
-      }
-    });
-
-    async function submitAndGo(){
-      try {
-        const payload = {
-          answers: Array.from(state.answers.entries()).map(([item_id, value])=>({item_id, value}))
-        };
-        const res = await fetch('/api/survey/scas/submit', {
-          method:'POST',
-          headers:{
-            'Content-Type':'application/json',
-            'Authorization':'Bearer ' + localStorage.getItem('token')
-          },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if(!res.ok) throw new Error(data.error || 'No se pudo enviar');
-
-        // Guardamos y vamos a resultados
-        sessionStorage.setItem('scasResult', JSON.stringify(data));
-        location.href = '/results.html';
-      } catch (e) {
-        alert('No se pudo enviar la encuesta. Intenta otra vez.');
-        console.error(e);
-      }
-    }
-  </script>
+  }
+</script>
 </body>
 </html>

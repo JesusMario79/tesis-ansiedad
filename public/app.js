@@ -46,8 +46,11 @@ function getUser() {
 }
 
 function clearAuth() {
-  localStorage.removeItem(AUTH_KEY);
-  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(AUTH_KEY);  // "scas_auth_token"
+  localStorage.removeItem(USER_KEY);  // "scas_user_info"
+  // claves antiguas, por si quedaron de pruebas:
+  localStorage.removeItem("token");
+  localStorage.removeItem("fullname");
 }
 
 /* =============== Fetch helper =============== */
@@ -68,7 +71,7 @@ async function api(path, { method = "GET", body, auth = true, headers = {} } = {
 
   const res = await fetch(path, opts);
   let data = {};
-  try { data = await res.json(); } catch { /* texto vacío */ }
+  try { data = await res.json(); } catch { /* puede no haber JSON */ }
 
   if (!res.ok || data?.ok === false) {
     const msg = data?.error || `Error HTTP ${res.status}`;
@@ -79,13 +82,13 @@ async function api(path, { method = "GET", body, auth = true, headers = {} } = {
 
 /* =============== Registro =============== */
 async function register() {
-  const msgId = "registerMsg";
+  const msgId = "regMsg";
   clearMsg(msgId);
 
   const fullname = getVal("regFullname", "fullname");
   const email    = getVal("regEmail", "email");
   const password = getVal("regPass", "password");
-  const gender   = getVal("regGender", "gender");   // "M" o "F" (opcional)
+  const gender   = getVal("regGender", "gender"); // "M" o "F"
   const age      = getVal("regAge", "age");
 
   if (!fullname || !email || !password || !age) {
@@ -99,11 +102,13 @@ async function register() {
       auth: false,
       body: { fullname, email, password, gender, age }
     });
-    // guarda token y user básico
+
+    // Guarda token y usuario básico
     saveAuth(out.token, { id: out.id, email: out.email, fullname: out.fullname, role: out.role });
     setMsg(msgId, "Registro exitoso. Redirigiendo…", true);
-    // ve a la pantalla del estudiante
-    setTimeout(() => location.href = "student.html", 400);
+
+    // Después de registrar, llévalo al login (index)
+    setTimeout(() => location.replace("index.html"), 400);
   } catch (err) {
     setMsg(msgId, err.message);
   }
@@ -127,9 +132,10 @@ async function login() {
       auth: false,
       body: { email, password }
     });
+
     saveAuth(out.token, { id: out.id, email: out.email, fullname: out.fullname, role: out.role });
     setMsg(msgId, "Ingreso correcto. Redirigiendo…", true);
-    setTimeout(() => location.href = "student.html", 300);
+    setTimeout(() => redirectByRole(out.role), 300);
   } catch (err) {
     setMsg(msgId, err.message);
   }
@@ -141,8 +147,10 @@ async function loadMe() {
   try {
     const me = await api("/auth/me", { method: "GET", auth: true });
     saveAuth(getToken(), { id: me.id, email: me.email, fullname: me.fullname, role: me.role });
+
     const el = document.getElementById("welcomeName");
     if (el) el.textContent = me.fullname || "";
+
     return me;
   } catch {
     // token no válido
@@ -153,55 +161,71 @@ async function loadMe() {
 
 function logout() {
   clearAuth();
-  location.href = "index.html";
+  location.replace("index.html"); // evita volver con el botón “Atrás”
 }
 
 /* =============== Protección de páginas =============== */
-async function requireAuthPage() {
+async function requireAuthPage(requiredRole) {
   const me = await loadMe();
-  if (!me) location.href = "index.html";
+  if (!me) {
+    location.replace("index.html");
+    return;
+  }
+  if (requiredRole && me.role !== requiredRole) {
+    // si no es admin e intenta entrar a admin.html, mándalo a student
+    location.replace("student.html");
+  }
 }
 
 /* =============== Atajos de formulario =============== */
 function wireForms() {
-  // Si existe un botón con id, conecta handlers
-  const loginBtn = document.getElementById("loginBtn");
-  if (loginBtn) loginBtn.addEventListener("click", (e) => { e.preventDefault(); login(); });
+  // Botón cerrar sesión (admin.html / student.html)
+  const logoutBtn = document.getElementById("btnLogout");
+  if (logoutBtn) logoutBtn.addEventListener("click", (e) => { e.preventDefault(); logout(); });
 
+  // Botón registrar (si existe)
   const regBtn = document.getElementById("registerBtn");
   if (regBtn) regBtn.addEventListener("click", (e) => { e.preventDefault(); register(); });
 
-  // Si hay formularios <form>, intercepta submit
+  // Formularios <form> si existen
   const loginForm = document.getElementById("loginForm");
   if (loginForm) loginForm.addEventListener("submit", (e) => { e.preventDefault(); login(); });
 
   const registerForm = document.getElementById("registerForm");
   if (registerForm) registerForm.addEventListener("submit", (e) => { e.preventDefault(); register(); });
 
-  // Enviar con Enter si usas inputs sueltos
-  ["loginEmail","loginPass"].forEach(id=>{
+  // Enviar con Enter en login
+  ["loginEmail", "loginPass"].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.addEventListener("keydown", (e)=>{ if (e.key === "Enter"){ e.preventDefault(); login(); }});
+    if (el) el.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); login(); } });
   });
 }
 
 /* =============== Inicialización por página =============== */
 document.addEventListener("DOMContentLoaded", async () => {
-  wireForms();
-
   // Detecta por nombre de archivo
   const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
 
+  wireForms();
+
   if (page === "" || page === "index.html") {
-    // Si ya hay sesión válida, puedes redirigir al estudiante:
-    // const me = await loadMe(); if (me) location.href = "student.html";
-    await loadMe(); // o solo cargar saludo si existe
+    // Solo valida sesión para mostrar saludo si corresponde
+    await loadMe();
   }
 
-  if (page === "student.html" || page === "results.html" || page === "admin.html") {
-    await requireAuthPage();
+  if (page === "student.html" || page === "results.html") {
+    await requireAuthPage(); // cualquier usuario logueado
+  }
+
+  if (page === "admin.html") {
+    await requireAuthPage("admin"); // solo admin
   }
 });
+
+/* =============== Utilidades varias =============== */
+function redirectByRole(role) {
+  location.replace(role === "admin" ? "admin.html" : "student.html");
+}
 
 /* =============== Exporta en global si usas onclick= ======= */
 window.login = login;
