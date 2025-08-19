@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Resultados</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    :root{ --bg:#f6f9fc; --card:#fff; --text:#0f172a; --muted:#64748b; --border:#e5e7eb;
+           --danger:#dc2626; --danger-h:#b91c1c; }
+    html,body{background:var(--bg)}
+    .wrap{max-width:920px;margin:28px auto 40px;padding:0 14px;}
+    .card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 12px 28px rgba(0,0,0,.06);padding:16px;}
+    .table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff}
+    .table caption{caption-side:top;padding:18px 14px 8px;font-weight:900;font-size:clamp(20px,3vw,28px);color:var(--text);text-align:center}
+    .subcaption{display:block;margin-top:4px;color:#000;font-weight:700;font-size:14px}
+    .table th,.table td{padding:12px 14px;border-bottom:1px solid var(--border)}
+    .table th{background:#f8fafc;text-align:left;font-weight:800;color:#111827}
+    .table tr:last-child td{border-bottom:none}
+    .key{width:48%}.val{font-weight:800;color:var(--text)}
+    .row-section th{background:#eef2ff;color:#111827;font-size:14px;letter-spacing:.3px;text-transform:uppercase}
+    .badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;letter-spacing:.3px}
+    .lv-low{color:#065f46;background:#d1fae5}.lv-mid{color:#78350f;background:#ffedd5}.lv-high{color:#7f1d1d;background:#fee2e2}
+    .muted{color:var(--muted);font-weight:600;font-size:12px;margin-left:8px}
+    .actions{display:flex;justify-content:center;margin-top:16px}
+    .btn{border:none;cursor:pointer;font-weight:800;padding:12px 18px;border-radius:12px}
+    .btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:var(--danger-h)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="card">
+      <table class="table">
+        <caption>
+          Resultados
+          <span id="subcap" class="subcaption"></span>
+        </caption>
+        <thead>
+          <tr><th class="key">Ítem</th><th>Valor</th></tr>
+        </thead>
+        <tbody id="tbody-main">
+          <tr><td class="key">Puntaje total</td><td class="val"><span id="cellScore">–</span> / 114</td></tr>
+          <tr><td class="key">Nivel</td><td class="val"><span id="cellLevel" class="badge">–</span></td></tr>
+          <tr><td class="key">Completado por</td><td class="val" id="cellName">–</td></tr>
+
+          <tr class="row-section"><th colspan="2">Predicción con Machine Learning</th></tr>
+          <tr><td class="key">Etiqueta prevista (ML)</td><td class="val"><span id="mlPred" class="badge">–</span><span id="mlSource" class="muted"></span></td></tr>
+          <tr><td class="key">Probabilidades (Bajo / Moderado / Alto)</td><td class="val" id="mlProba">–</td></tr>
+
+          <tr class="row-section"><th colspan="2">Desglose por subescala</th></tr>
+          <tr><td class="key">Ansiedad generalizada (GAD)</td><td class="val" id="gad">–</td></tr>
+          <tr><td class="key">Fobia social (SOC)</td><td class="val" id="soc">–</td></tr>
+          <tr><td class="key">Obsesivo-compulsivo (OCD)</td><td class="val" id="ocd">–</td></tr>
+          <tr><td class="key">Pánico/Agorafobia (PAA)</td><td class="val" id="paa">–</td></tr>
+          <tr><td class="key">Miedo a lesiones físicas (PHB)</td><td class="val" id="phb">–</td></tr>
+          <tr><td class="key">Ansiedad de separación (SAD)</td><td class="val" id="sad">–</td></tr>
+        </tbody>
+      </table>
+
+      <div class="actions">
+        <button class="btn btn-danger" id="btnLogout">Cerrar sesión</button>
+      </div>
+    </section>
+  </div>
+<script src="app.js"></script>
+<script>
+  (async () => {
+    // Asegura sesión
+    const me = await loadMe();
+    if (!me) { location.href = "index.html"; return; }
+
+    // Nombre (siempre)
+    const nombre = (getUser().fullname || 'estudiante');
+    document.getElementById('cellName').textContent = nombre;
+
+    // Lee el resultado que dejó student.html
+    let raw = sessionStorage.getItem('scasResult');
+    if (!raw) {
+      alert('No se pudieron mostrar los resultados. Reintenta enviando la encuesta otra vez.');
+      location.href = 'student.html';
+      return;
+    }
+
+    let res;
+    try { res = JSON.parse(raw); } catch {
+      alert('No se pudieron mostrar los resultados. Reintenta enviando la encuesta otra vez.');
+      location.href = 'student.html';
+      return;
+    }
+
+    // (Opcional) para evitar ver resultados viejos al recargar:
+    // sessionStorage.removeItem('scasResult');
+
+    // ---- Pintar datos ----
+    // Puntaje total (acepta "total_score" o "score")
+    const totalScore = (res.total_score ?? res.score ?? 0);
+    document.getElementById('cellScore').textContent = totalScore;
+
+    // Nivel
+    const lvl = String(res.level || 'N/D');
+    const lvlEl = document.getElementById('cellLevel');
+    lvlEl.textContent = lvl;
+    lvlEl.className = 'badge ' + (
+      /alto/i.test(lvl) ? 'lv-high' :
+      /moderado/i.test(lvl) ? 'lv-mid' : 'lv-low'
+    );
+
+    // ML (si existiera)
+    const ml = res.ml || null;
+    const mlPredEl = document.getElementById('mlPred');
+    const mlSrcEl  = document.getElementById('mlSource');
+    const mlProbEl = document.getElementById('mlProba');
+    if (ml) {
+      const pred = String(ml.pred || 'N/D');
+      mlPredEl.textContent = pred;
+      mlPredEl.className = 'badge ' + (
+        /alto/i.test(pred) ? 'lv-high' :
+        /moderado/i.test(pred) ? 'lv-mid' : 'lv-low'
+      );
+      mlSrcEl.textContent = ml.source === 'ml' ? '(modelo entrenado)' : '(regla)';
+      const p = ml.proba || {};
+      const pct = k => Math.round((p[k] || 0) * 100) + '%';
+      mlProbEl.textContent = `Bajo: ${pct('Bajo')} · Moderado: ${pct('Moderado')} · Alto: ${pct('Alto')}`;
+    } else {
+      mlPredEl.textContent = '–';
+      mlPredEl.className = 'badge';
+      mlSrcEl.textContent = '';
+      mlProbEl.textContent = '–';
+    }
+
+    // Subescalas (si el backend las envía, ahora sí)
+    const s = res.subscales || {};
+    document.getElementById('gad').textContent = s.GAD ?? '–';
+    document.getElementById('soc').textContent = s.SOC ?? '–';
+    document.getElementById('ocd').textContent = s.OCD ?? '–';
+    document.getElementById('paa').textContent = s.PAA ?? '–';
+    document.getElementById('phb').textContent = s.PHB ?? '–';
+    document.getElementById('sad').textContent = s.SAD ?? '–';
+
+    // Botón salir
+    document.getElementById('btnLogout').addEventListener('click', logout);
+  })();
+</script>
+</body>
+</html>

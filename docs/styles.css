@@ -1,0 +1,254 @@
+:root{
+  --bg:#f3f5fa;
+  --card:#ffffff;
+  --text:#000000; /* Negro siempre */
+  --muted:#555555; /* Gris medio para textos secundarios */
+  --brand:#2563eb;
+  --brand-600:#1d4ed8;
+  --ring: rgba(37, 99, 235, .35);
+  --border:#e5e7eb;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  color:var(--text);
+  background:linear-gradient(180deg,#f8fafc 0%, var(--bg) 100%);
+}
+
+.container{ max-width: 920px; margin: 40px auto; padding: 0 16px; }
+
+h1{ font-size: 2.1rem; margin:0 0 16px; letter-spacing:.2px }
+h2{ font-size: 1.3rem; margin:0 0 8px }
+/* ====== Login mejorado ====== */
+.auth-card{
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 18px 20px 20px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.07);
+}
+.auth-title{
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;            /* slate-900 */
+}
+.auth-subtitle{
+  margin: 0 0 14px;
+  color: #64748b;            /* slate-500 */
+  font-size: 14px;
+}
+.auth-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (max-width: 720px){
+  .auth-grid{ grid-template-columns: 1fr; }
+}
+.field{ display: flex; flex-direction: column; gap: 6px; }
+.field label{
+  font-weight: 600;
+  color: #334155;            /* slate-700 */
+  font-size: 14px;
+}
+.inp-lg{ height: 48px; font-size: 16px; border-radius: 12px; }
+.inp:focus{
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.18);
+}
+.btn-lg{ height: 48px; border-radius: 12px; font-size: 16px; }
+.full{ width: 100%; margin-top: 2px; }
+
+.msg-inline{
+  margin-top: 8px;
+  color: #c02626;            /* error */
+  min-height: 20px;
+  font-weight: 600;
+}
+
+.auth-footer{
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 14px;
+}
+.link{
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+}
+.link:hover{ text-decoration: underline; }
+
+
+/* -------- Topbar genérica (páginas públicas) -------- */
+.topbar{
+  display:flex; gap:12px; align-items:center; justify-content:space-between;
+  background: var(--card);
+  border:1px solid var(--border);
+  padding: 10px 12px; border-radius:12px; box-shadow: 0 8px 24px rgba(15,23,42,.06);
+}
+
+.badge{ background:#eef2ff; color:#3730a3; font-weight:600; padding:6px 10px; border-radius:10px; display:inline-block; }
+
+.btn{
+  appearance:none; border:1px solid var(--border); background: var(--card);
+  padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600;
+  transition:.15s transform ease, .15s box-shadow ease, .15s background ease;
+}
+.btn:hover{ transform: translateY(-1px); box-shadow:0 6px 18px rgba(15,23,42,.08) }
+.btn:active{ transform: translateY(0) }
+.btn-primary{ background: var(--brand); border-color: var(--brand); color:#fff; }
+.btn-primary:hover{ background: var(--brand-600) }
+.btn-ghost{ background:#fff; border:1px solid var(--border); color:#0f172a; }
+
+.card{
+  background: var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:18px;
+  box-shadow: 0 10px 26px rgba(15,23,42,.06);
+}
+
+.section{ margin-top:18px; }
+.section > h2{ margin-bottom:12px }
+
+/* -------- Encuesta -------- */
+.survey-wrap{ border:1px solid var(--border); border-radius:14px; background:#fff; padding: 16px 12px; }
+
+.survey-item{
+  border:1px solid var(--border); border-radius:14px; padding:16px;
+  margin:14px 0; background: #fff;
+  color: #000 !important;
+}
+.survey-item strong{ font-weight:700; color:#000 !important; }
+.survey-item .tag{ margin-left:6px; font-size:.8rem; background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:999px; }
+
+.options{ margin-top:10px; display:grid; gap:8px }
+.option{
+  display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
+  border:1px solid var(--border); cursor:pointer; color:#000 !important;
+}
+.option:hover{ border-color: var(--brand); box-shadow: 0 0 0 3px var(--ring) }
+.option input{ width:18px; height:18px }
+
+.sticky-bar{ position: sticky; bottom: 12px; z-index: 50; margin-top: 16px; }
+.sticky-inner{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  background: var(--card); border:1px solid var(--border); border-radius:14px;
+  padding: 12px 14px; box-shadow: 0 16px 36px rgba(15,23,42,.12);
+}
+.progress{ font-weight:600; color: var(--muted); }
+
+hr.sep{ border:0; border-top:1px dashed var(--border); margin:14px 0 }
+
+/* -------- Formularios -------- */
+.form-grid{
+  display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:center;
+}
+.form-grid .inp{
+  width:100%; padding:12px 14px; border:1px solid var(--border); border-radius:10px;
+  background:#fff; color:var(--text); font-size:1rem;
+  outline:none; transition: box-shadow .15s ease, border-color .15s ease;
+}
+.form-grid .inp:focus{ border-color: var(--brand); box-shadow: 0 0 0 3px var(--ring) }
+.form-grid button.btn{ grid-column: span 2; justify-self:start; }
+
+.msg{ margin-top:8px; color:crimson; font-weight:600 }
+
+/* -------- Tabs -------- */
+.tabs{ display:flex; gap:10px; margin-bottom:14px; }
+.tab{ border-radius: 999px; padding:8px 14px; }
+.tab.active{ background: var(--brand); border-color: var(--brand); color:#fff; }
+
+/* Responsive formularios */
+@media (max-width: 640px){
+  .form-grid{ grid-template-columns: 1fr; }
+  .form-grid button.btn{ grid-column: 1; width:100%; }
+}
+
+/* -------- Panel admin (legacy stats) -------- */
+.stats{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top:14px; }
+.stat{ padding:14px }
+.stat-label{ color:var(--muted); font-weight:600; margin-bottom:4px }
+.stat-value{ font-size:1.8rem; font-weight:800 }
+
+/* -------- Tabla -------- */
+.table-wrap{ overflow:auto; }
+.table{ width:100%; border-collapse: collapse; background:#fff }
+.table th, .table td{ border-bottom:1px solid var(--border); padding:12px; text-align:left; }
+.table th{ background:#f8fafc; position:sticky; top:0; z-index:1 }
+.table tr:hover td{ background:#fafafa }
+.table .right{ text-align:right }
+
+.name{ font-weight:700 }
+.badge-soft{ background:#eef2ff; color:#3730a3; padding:2px 8px; border-radius:999px; font-weight:700 }
+
+/* inputs genéricos fuera de formularios */
+.inp{
+  height:42px;               /* altura uniforme con botones */
+  padding:0 12px;
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  background:#fff;
+}
+.inp:focus{ outline:none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--ring) }
+
+.empty{ padding:16px; color:#777 }
+
+@media (max-width: 768px){
+  .stats{ grid-template-columns: 1fr; }
+  .inp{ width:100%; }
+}
+
+/* -------- Etiquetas de nivel -------- */
+.tag-level{ display:inline-block; padding:4px 8px; border-radius:6px; font-size:0.85rem; font-weight:600; white-space: nowrap; }
+.tag-leve{ background:#d1fae5; color:#065f46; }
+.tag-moderado{ background:#fef9c3; color:#92400e; }
+.tag-grave{ background:#fee2e2; color:#991b1b; }
+
+/* ================== Encabezado Admin ================== */
+.admin-header{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:12px 16px; background:#fff; border-radius:14px;
+  box-shadow:0 8px 24px rgba(0,0,0,.06); margin-bottom:18px;
+}
+.admin-title{ font-size:32px; line-height:1.1; margin:0; font-weight:800; color:#0f172a; }
+.admin-actions{ display:flex; align-items:center; gap:12px; }
+.badge-welcome{ display:inline-block; padding:8px 14px; border-radius:12px; font-weight:600; background:#ede9fe; color:#5b21b6; border:1px solid #ddd6fe; }
+
+/* ================== Tarjetas métricas ================== */
+.cards{ display:grid; gap:16px; }
+.cards.row-3{ grid-template-columns: repeat(3, minmax(0,1fr)); }
+@media (max-width: 1024px){ .cards.row-3{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 640px){  .cards.row-3{ grid-template-columns: 1fr; } }
+
+.card.stat{
+  background:#fff; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.06);
+  padding:18px 20px; display:flex; flex-direction:column; gap:6px;
+}
+.card.stat > div:first-child{ color:#64748b; font-weight:600; font-size:14px; }
+.stat-num{ font-size:32px; line-height:1.1; font-weight:800; color:#0f172a; }
+
+/* ================== Toolbar de tabla ================== */
+.toolbar{
+display:flex;
+align-items:center;
+gap:16px;
+flex-wrap:nowrap;                 /* una sola fila en desktop */
+margin:8px 0 12px;                /* 👈 separa del bloque de tarjetas */
+}
+.toolbar .search{
+  width:auto;
+  min-width:260px;
+  max-width:320px;
+  flex:1 1 320px;                   /* crece pero deja sitio a los botones */
+}
+.toolbar .controls{
+  display:flex; align-items:center; gap:12px;
+  margin-left:auto;                 /* empuja a la derecha */
+  flex:0 0 auto;
+}
