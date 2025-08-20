@@ -23,20 +23,8 @@
       border-radius:16px;
       box-shadow:0 10px 30px rgba(0,0,0,.07);
     }
-    .brand {
-      margin:0 0 6px;
-      font-size:24px;
-      font-weight:800;
-      color:#0f172a;
-      text-align:center;
-    }
-    .auth-title {
-      margin:0 0 12px;
-      font-size:18px;
-      font-weight:800;
-      color:#0f172a;
-      text-align:center;
-    }
+    .brand { margin:0 0 6px; font-size:24px; font-weight:800; color:#0f172a; text-align:center; }
+    .auth-title { margin:0 0 12px; font-size:18px; font-weight:800; color:#0f172a; text-align:center; }
     .stack { display:flex; flex-direction:column; gap:10px; margin-bottom:10px; }
     .field { display:flex; flex-direction:column; gap:6px; }
     .field label { font-weight:600; color:#334155; font-size:14px; }
@@ -49,6 +37,7 @@
     .auth-footer { margin-top:12px; color:#64748b; font-size:14px; text-align:center; }
     .link { color:#2563eb; text-decoration:none; font-weight:600; }
     .link:hover { text-decoration:underline; }
+    .help { font-size:13px; color:#c02626; min-height:18px; }
   </style>
 </head>
 <body>
@@ -57,7 +46,6 @@
       <h2 class="brand">Aplicación ML – Ansiedad (SCAS)</h2>
       <p class="auth-title">Registro del estudiante</p>
 
-      <!-- rol fijo a estudiante (opcional si no lo usas en JS) -->
       <input type="hidden" id="regRole" value="student">
 
       <div class="stack">
@@ -96,13 +84,15 @@
         <!-- Edad -->
         <div class="field">
           <label for="regAge">Edad</label>
-          <input id="regAge" name="age" type="number"
+          <!-- type="text" + inputmode numérico para poder limitar a 2 dígitos -->
+          <input id="regAge" name="age" type="text"
                  class="inp-lg full"
-                 min="12" max="15" step="1" inputmode="numeric"
-                 oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value>15)this.value=15; if(this.value && this.value<12)this.value=12;"
-                 title="Solo valores entre 12 y 15"
+                 inputmode="numeric"
+                 maxlength="2"
                  autocomplete="bday"
+                 aria-describedby="ageMsg"
                  required>
+          <div id="ageMsg" class="help"></div>
         </div>
 
         <!-- Contraseña -->
@@ -116,7 +106,8 @@
         </div>
       </div>
 
-      <button class="btn btn-primary btn-lg full" onclick="register()">Crear cuenta</button>
+      <!-- Validamos primero y luego llamamos a tu register() -->
+      <button class="btn btn-primary btn-lg full" onclick="onRegister()">Crear cuenta</button>
       <div id="regMsg" class="msg-inline" aria-live="polite"></div>
 
       <p class="auth-footer">
@@ -127,5 +118,62 @@
   </div>
 
   <script src="app.js"></script>
+  <script>
+    // --- Validación de edad (dos dígitos, entre 12 y 15) ---
+    const ageInput = document.getElementById('regAge');
+    const ageMsg   = document.getElementById('ageMsg');
+
+    function validateAge() {
+      // Mantener solo números y máximo 2 dígitos
+      ageInput.value = (ageInput.value || '').replace(/\D/g, '').slice(0, 2);
+
+      const v = ageInput.value;
+      if (!v) {
+        ageInput.setCustomValidity('');     // dejar que el "required" haga su trabajo
+        ageMsg.textContent = '';
+        return false;
+      }
+
+      const n = parseInt(v, 10);
+      // Requerir exactamente 2 dígitos y rango 12–15
+      if (v.length !== 2 || n < 12 || n > 15) {
+        const msg = 'Solo edades entre 12 y 15 años.';
+        ageInput.setCustomValidity(msg);
+        ageMsg.textContent = msg;
+        return false;
+      }
+
+      // OK
+      ageInput.setCustomValidity('');
+      ageMsg.textContent = '';
+      return true;
+    }
+
+    ageInput.addEventListener('input', () => {
+      validateAge();
+      // mostrar globito nativo si está inválido
+      if (!ageInput.checkValidity()) ageInput.reportValidity();
+    });
+
+    // Validación general al hacer click en "Crear cuenta"
+    function onRegister() {
+      // Valida edad
+      if (!validateAge()) {
+        ageInput.reportValidity();
+        return;
+      }
+      // Valida el resto de campos nativos
+      const ids = ['regFullname', 'regEmail', 'regGender', 'regPass'];
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el && !el.checkValidity()) {
+          el.reportValidity();
+          return;
+        }
+      }
+      // Si todo OK, llamamos a tu función original
+      if (typeof register === 'function') register();
+    }
+  </script>
 </body>
 </html>

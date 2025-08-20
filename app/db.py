@@ -1,6 +1,7 @@
 # app/db.py
 import os
 from sqlalchemy import create_engine, text
+from urllib.parse import urlparse, unquote
 from passlib.hash import bcrypt  # para hashear contraseñas
 
 # ----------------------------
@@ -90,6 +91,10 @@ def create_tables_if_needed():
         # Evoluciones opcionales
         _add_col_if_missing(conn, "users", "gender", "gender ENUM('M','F') NULL AFTER password_hash")
         _add_col_if_missing(conn, "users", "age", "age TINYINT UNSIGNED NULL AFTER gender")
+        _add_col_if_missing(conn, "surveys", "description", "description VARCHAR(255) NULL AFTER title")
+        _add_col_if_missing(conn, "surveys", "min_age",    "min_age TINYINT UNSIGNED NOT NULL AFTER description")
+        _add_col_if_missing(conn, "surveys", "max_age",    "max_age TINYINT UNSIGNED NOT NULL AFTER min_age")
+
 
         # Encuestas
         conn.execute(
